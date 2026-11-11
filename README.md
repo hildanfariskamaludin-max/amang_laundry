@@ -68,50 +68,31 @@ Artinya: **password benar = data terbaca**, **password salah = data tetap terenk
 
 ## 📸 Screenshot
 
-> **Catatan:** taruh file gambar ke folder [`screenshots/`](screenshots/) dengan nama persis seperti di bawah ini.
-> Selama file belum ada, gambar akan tampil sebagai broken image.
+Semua gambar ada di folder [`screenshots/`](screenshots/).
 
-### Halaman Publik
+### 1. Landing Page — Hero Section
 
-#### 1. Landing Page — Hero Section
-![Landing Page Hero](screenshots/01-landing-hero.png)
+Halaman publik dengan tema Portugal: hero section, navigasi, dan tombol akses login admin.
 
-#### 2. Layanan Unggulan
-![Layanan Unggulan](screenshots/02-layanan.png)
+![Landing Page](screenshots/01-landing-page.png)
 
-#### 3. Daftar Harga Resmi
-![Daftar Harga](screenshots/03-harga.png)
+### 2. Login Administrator
 
-#### 4. Tentang Amang Laundry
-![Tentang Kami](screenshots/04-tentang.png)
+Form login "Portugal #7 Security Gate". Username dan Secret Key dipakai untuk menurunkan kunci AES-256-GCM.
 
-#### 5. Login Administrator
-![Login Admin](screenshots/05-login-admin.png)
+![Login Admin](screenshots/02-login-admin.png)
 
-### Panel Admin
+### 3. Dashboard — Password Benar (Data Asli)
 
-#### 6. Dashboard — Password Benar (data asli terdekripsi)
-![Dashboard Password Benar](screenshots/06-dashboard-password-benar.png)
+Password cocok, kunci AES-256-GCM valid, seluruh data pesanan berhasil didekripsi dan tampil sebagai data asli.
 
-#### 7. Dashboard — Password Salah (ciphertext dari database)
-![Dashboard Password Salah](screenshots/07-dashboard-password-salah.png)
+![Dashboard Password Benar](screenshots/03-dashboard-password-benar.png)
 
-#### 8. Tabel Pesanan
-![Tabel Pesanan](screenshots/08-tabel-pesanan.png)
+### 4. Bukti Enkripsi — Password Salah (Ciphertext)
 
-#### 9. Tambah Pesanan Baru
-![Tambah Pesanan](screenshots/09-tambah-pesanan.png)
+Password salah, dekripsi ditolak. Tabel dan statistik menampilkan `encrypted_data`, `nonce`, dan `auth_tag` mentah dari MySQL.
 
-#### 10. Detail Pesanan
-![Detail Pesanan](screenshots/10-detail-pesanan.png)
-
-#### 11. Data Layanan & Harga
-![Data Layanan](screenshots/11-data-layanan.png)
-
-### Tampilan Mobile
-
-#### 12. Responsive di Smartphone
-![Mobile Responsive](screenshots/12-mobile-responsive.png)
+![Bukti Terenkripsi](screenshots/04-bukti-terenkripsi.png)
 
 ---
 
@@ -238,18 +219,10 @@ Amang_Laundry/
 ├── config.php                # Koneksi DB, skema, kriptografi, autentikasi, helper CRUD
 ├── README.md
 └── screenshots/              # Screenshot untuk dokumentasi
-    ├── 01-landing-hero.png
-    ├── 02-layanan.png
-    ├── 03-harga.png
-    ├── 04-tentang.png
-    ├── 05-login-admin.png
-    ├── 06-dashboard-password-benar.png
-    ├── 07-dashboard-password-salah.png
-    ├── 08-tabel-pesanan.png
-    ├── 09-tambah-pesanan.png
-    ├── 10-detail-pesanan.png
-    ├── 11-data-layanan.png
-    └── 12-mobile-responsive.png
+    ├── 01-landing-page.png
+    ├── 02-login-admin.png
+    ├── 03-dashboard-password-benar.png
+    └── 04-bukti-terenkripsi.png
 ```
 
 ---
