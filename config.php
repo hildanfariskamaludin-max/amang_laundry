@@ -1,7 +1,12 @@
 <?php
 /**
  * AMANG LAUNDRY - PORTUGAL FOOTBALL EDITION (CR7 THEME)
- * File 1/3: config.php (Perbaikan Auto-Repair & Sinkronisasi Kunci Tabel Layanan)
+ * File 1/3: config.php
+ * - Kompatibel PHP 7.4 & PHP 8.x
+ * - Login khusus Private Key (tanpa username)
+ * - Private Key: kemaltamvan11
+ * - Auto-repair data pesanan lama yang tidak cocok dengan Private Key baru
+ * - Enkripsi seluruh tampilan satu website jika Private Key salah
  */
 
 // 1. Konfigurasi Session Aman
@@ -27,7 +32,8 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 
 define('ADMIN_DEFAULT_USER', 'Kemal');
-define('ADMIN_DEFAULT_PASS', 'Portugal 33');
+define('PRIVATE_KEY', 'kemaltamvan11');
+define('ADMIN_DEFAULT_PASS', PRIVATE_KEY);
 define('CIPHER_METHOD', 'aes-256-gcm');
 
 try {
@@ -41,10 +47,10 @@ try {
     die('Koneksi database gagal. Pastikan database "amang_laundry" aktif di Laragon/phpMyAdmin.');
 }
 
-// 3. Inisialisasi Tabel & Auto-Repair Data Layanan
+// 3. Inisialisasi Tabel & Auto-Repair Data
 initializeSystemDefaults($pdo);
 
-function initializeSystemDefaults(PDO $pdo): void
+function initializeSystemDefaults(PDO $pdo)
 {
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `admin` (
@@ -76,28 +82,27 @@ function initializeSystemDefaults(PDO $pdo): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    // Cek akun admin Kemal
+    // Cek & sinkronkan Private Key di tabel admin
     $stmt = $pdo->prepare('SELECT id, password_hash FROM admin WHERE username = :u LIMIT 1');
     $stmt->execute([':u' => ADMIN_DEFAULT_USER]);
     $admin = $stmt->fetch();
 
     if (!$admin) {
-        $hash = password_hash(ADMIN_DEFAULT_PASS, PASSWORD_BCRYPT);
+        $hash = password_hash(PRIVATE_KEY, PASSWORD_BCRYPT);
         $ins  = $pdo->prepare('INSERT INTO admin (username, password_hash) VALUES (:u, :p)');
         $ins->execute([
             ':u' => ADMIN_DEFAULT_USER,
             ':p' => $hash
         ]);
     } else {
-        if (!password_verify(ADMIN_DEFAULT_PASS, $admin['password_hash'])) {
-            $newHash = password_hash(ADMIN_DEFAULT_PASS, PASSWORD_BCRYPT);
+        if (!password_verify(PRIVATE_KEY, $admin['password_hash'])) {
+            $newHash = password_hash(PRIVATE_KEY, PASSWORD_BCRYPT);
             $upd = $pdo->prepare('UPDATE admin SET password_hash = :p WHERE id = :id');
             $upd->execute([':p' => $newHash, ':id' => $admin['id']]);
         }
     }
 
-    // Cek apakah layanan yang bisa didekripsi kosong (akibat beda kunci versi lama).
-    // Jika kosong, bersihkan tabel layanan lama dan isi ulang 4 layanan standar.
+    // Cek apakah layanan yang bisa didekripsi kosong
     $validLayanan = getAllLayanan($pdo);
     if (empty($validLayanan)) {
         $pdo->exec('TRUNCATE TABLE `layanan`');
@@ -112,14 +117,18 @@ function initializeSystemDefaults(PDO $pdo): void
         }
     }
 
-    // Cek contoh pesanan awal
-    $countPesanan = (int) $pdo->query('SELECT COUNT(*) FROM pesanan')->fetchColumn();
-    if ($countPesanan === 0) {
-        $stmtAdmin = $pdo->prepare('SELECT password_hash FROM admin WHERE username = :u LIMIT 1');
-        $stmtAdmin->execute([':u' => ADMIN_DEFAULT_USER]);
-        $admRow = $stmtAdmin->fetch();
-        if ($admRow) {
-            $trueKey = deriveEncryptionKey(ADMIN_DEFAULT_PASS, $admRow['password_hash']);
+    // Cek contoh pesanan awal & auto-repair jika semua data lama tidak cocok dengan Private Key baru
+    $stmtAdmin = $pdo->prepare('SELECT password_hash FROM admin WHERE username = :u LIMIT 1');
+    $stmtAdmin->execute([':u' => ADMIN_DEFAULT_USER]);
+    $admRow = $stmtAdmin->fetch();
+
+    if ($admRow) {
+        $trueKey    = deriveEncryptionKey(PRIVATE_KEY, $admRow['password_hash']);
+        $cekPesanan = getAllPesananDecrypted($pdo, $trueKey);
+        $totalRow   = count($cekPesanan['items']);
+
+        if ($totalRow === 0 || $cekPesanan['failed_count'] === $totalRow) {
+            $pdo->exec('TRUNCATE TABLE `pesanan`');
             createPesanan($pdo, [
                 'nama_pelanggan' => 'Cristiano Ronaldo',
                 'nomor_telepon'  => '087777777777',
@@ -139,16 +148,13 @@ function initializeSystemDefaults(PDO $pdo): void
 // 4. DERIVASI KUNCI (KDF) & ENKRIPSI / DEKRIPSI AES-256-GCM
 // ============================================================================
 
-function deriveEncryptionKey(string $password, string $passwordHash): string
+function deriveEncryptionKey($privateKey, $passwordHash)
 {
     $salt = substr(hash('sha256', 'CR7_PORTUGAL_SALT::' . $passwordHash, true), 0, 16);
-    return hash_pbkdf2('sha256', $password, $salt, 100000, 32, true);
+    return hash_pbkdf2('sha256', $privateKey, $salt, 100000, 32, true);
 }
 
-/**
- * Kunci enkripsi tabel layanan (Konsisten 32-byte agar tidak rusak saat hash admin direset).
- */
-function getServiceEncryptionKey(PDO $pdo): string
+function getServiceEncryptionKey(PDO $pdo)
 {
     return hash_pbkdf2(
         'sha256',
@@ -160,7 +166,7 @@ function getServiceEncryptionKey(PDO $pdo): string
     );
 }
 
-function encryptData(string $plaintext, string $key): array|false
+function encryptData($plaintext, $key)
 {
     if (strlen($key) !== 32) {
         return false;
@@ -191,15 +197,15 @@ function encryptData(string $plaintext, string $key): array|false
     ];
 }
 
-function decryptData(array $encryptedPackage, string $key): string|false
+function decryptData(array $encryptedPackage, $key)
 {
     if (strlen($key) !== 32) {
         return false;
     }
 
-    $ciphertextB64 = $encryptedPackage['encrypted_data'] ?? '';
-    $nonceHex      = $encryptedPackage['nonce'] ?? '';
-    $tagHex        = $encryptedPackage['auth_tag'] ?? '';
+    $ciphertextB64 = isset($encryptedPackage['encrypted_data']) ? $encryptedPackage['encrypted_data'] : '';
+    $nonceHex      = isset($encryptedPackage['nonce']) ? $encryptedPackage['nonce'] : '';
+    $tagHex        = isset($encryptedPackage['auth_tag']) ? $encryptedPackage['auth_tag'] : '';
 
     if (!ctype_xdigit($nonceHex) || strlen($nonceHex) !== 24) {
         return false;
@@ -228,7 +234,7 @@ function decryptData(array $encryptedPackage, string $key): string|false
     return ($plaintext !== false) ? $plaintext : false;
 }
 
-function extractDatabaseCipherSlices(array $row): array
+function extractDatabaseCipherSlices(array $row)
 {
     $rawDbStream = $row['encrypted_data'] . $row['nonce'] . $row['auth_tag'];
 
@@ -246,46 +252,46 @@ function extractDatabaseCipherSlices(array $row): array
 }
 
 // ============================================================================
-// 5. AUTENTIKASI & KEAMANAN SESI
+// 5. AUTENTIKASI (KHUSUS PRIVATE KEY) & ENKRIPSI SELURUH WEBSITE
 // ============================================================================
 
-function authenticateAdmin(PDO $pdo, string $username, string $password): bool
+function authenticateAdmin(PDO $pdo, $privateKey)
 {
     $stmt = $pdo->prepare('SELECT id, username, password_hash FROM admin WHERE username = :username LIMIT 1');
-    $stmt->execute([':username' => $username]);
+    $stmt->execute([':username' => ADMIN_DEFAULT_USER]);
     $admin = $stmt->fetch();
 
     if (!$admin) {
         return false;
     }
 
-    $isValidPassword = password_verify($password, $admin['password_hash']);
+    $isValidKey = password_verify($privateKey, $admin['password_hash']);
 
     session_regenerate_id(true);
-    $derivedKey = deriveEncryptionKey($password, $admin['password_hash']);
+    $derivedKey = deriveEncryptionKey($privateKey, $admin['password_hash']);
 
     $_SESSION['admin_logged_in'] = true;
     $_SESSION['admin_id']        = (int)$admin['id'];
     $_SESSION['admin_username']  = $admin['username'];
     $_SESSION['aes_key_hex']     = bin2hex($derivedKey);
-    $_SESSION['is_key_valid']    = $isValidPassword;
+    $_SESSION['is_key_valid']    = $isValidKey;
 
     return true;
 }
 
-function isAdminLoggedIn(): bool
+function isAdminLoggedIn()
 {
     return !empty($_SESSION['admin_logged_in'])
            && !empty($_SESSION['aes_key_hex'])
            && strlen($_SESSION['aes_key_hex']) === 64;
 }
 
-function isKeyValid(): bool
+function isKeyValid()
 {
     return !empty($_SESSION['is_key_valid']) && $_SESSION['is_key_valid'] === true;
 }
 
-function requireAdminAccess(): void
+function requireAdminAccess()
 {
     if (!isAdminLoggedIn()) {
         header('Location: index.php?view=login&denied=1');
@@ -293,7 +299,7 @@ function requireAdminAccess(): void
     }
 }
 
-function getSessionEncryptionKey(): string
+function getSessionEncryptionKey()
 {
     if (!isAdminLoggedIn()) {
         return '';
@@ -302,7 +308,7 @@ function getSessionEncryptionKey(): string
     return ($rawKey !== false && strlen($rawKey) === 32) ? $rawKey : '';
 }
 
-function logoutAdmin(): void
+function logoutAdmin()
 {
     if (isset($_SESSION['aes_key_hex'])) {
         $_SESSION['aes_key_hex'] = str_repeat('0', 64);
@@ -316,7 +322,51 @@ function logoutAdmin(): void
     session_destroy();
 }
 
-function getCsrfToken(): string
+/**
+ * Enkripsi seluruh teks tampilan satu website (index.php & admin.php)
+ * secara otomatis ketika login dengan Private Key yang salah.
+ */
+function encryptEntireWebsite($html)
+{
+    if (!isAdminLoggedIn() || isKeyValid()) {
+        return $html;
+    }
+
+    $wrongKey = getSessionEncryptionKey();
+    if ($wrongKey === '') {
+        $wrongKey = hash('sha256', 'INVALID_KEY_FALLBACK', true);
+    }
+    $iv = substr(hash('sha256', $wrongKey, true), 0, 16);
+
+    // Pisahkan tag <script> dan <style> agar CSS/JS tidak rusak
+    $parts = preg_split('/(<(?:script|style)\b[^>]*>.*?<\/(?:script|style)>)/is', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+    if ($parts === false) {
+        return $html;
+    }
+
+    foreach ($parts as $index => $part) {
+        if ($index % 2 === 0) {
+            $parts[$index] = preg_replace_callback('/>([^<]+)</', function ($matches) use ($wrongKey, $iv) {
+                $text = trim($matches[1]);
+                if ($text === '') {
+                    return $matches[0];
+                }
+                $cipher = openssl_encrypt($text, 'aes-256-ctr', $wrongKey, 0, $iv);
+                if ($cipher === false) {
+                    $cipher = base64_encode($text);
+                }
+                return '>' . htmlspecialchars($cipher, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '<';
+            }, $part);
+        }
+    }
+
+    return implode('', $parts);
+}
+
+// Aktifkan Output Buffering untuk enkripsi satu website penuh saat Private Key salah
+ob_start('encryptEntireWebsite');
+
+function getCsrfToken()
 {
     if (empty($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -324,22 +374,22 @@ function getCsrfToken(): string
     return $_SESSION['csrf_token'];
 }
 
-function verifyCsrfToken(string $token): bool
+function verifyCsrfToken($token)
 {
     return !empty($_SESSION['csrf_token']) && $token !== '' && hash_equals($_SESSION['csrf_token'], $token);
 }
 
-function cleanInput(string $val): string
+function cleanInput($val)
 {
-    return trim(strip_tags($val));
+    return trim(strip_tags((string)$val));
 }
 
-function e(mixed $val): string
+function e($val)
 {
     return htmlspecialchars((string)$val, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function formatRupiah(int|float $nominal): string
+function formatRupiah($nominal)
 {
     return 'Rp' . number_format((float)$nominal, 0, ',', '.');
 }
@@ -348,7 +398,7 @@ function formatRupiah(int|float $nominal): string
 // 6. HELPER CRUD DATA PESANAN & LAYANAN (TERENKRIPSI AES-256-GCM)
 // ============================================================================
 
-function createPesanan(PDO $pdo, array $data, string $key): bool
+function createPesanan(PDO $pdo, array $data, $key)
 {
     $json = json_encode($data, JSON_UNESCAPED_UNICODE);
     $enc  = encryptData((string)$json, $key);
@@ -364,7 +414,7 @@ function createPesanan(PDO $pdo, array $data, string $key): bool
     ]);
 }
 
-function updatePesanan(PDO $pdo, int $id, array $data, string $key): bool
+function updatePesanan(PDO $pdo, $id, array $data, $key)
 {
     $json = json_encode($data, JSON_UNESCAPED_UNICODE);
     $enc  = encryptData((string)$json, $key);
@@ -377,17 +427,17 @@ function updatePesanan(PDO $pdo, int $id, array $data, string $key): bool
         ':d'  => $enc['encrypted_data'],
         ':n'  => $enc['nonce'],
         ':t'  => $enc['auth_tag'],
-        ':id' => $id
+        ':id' => (int)$id
     ]);
 }
 
-function deletePesanan(PDO $pdo, int $id): bool
+function deletePesanan(PDO $pdo, $id)
 {
     $stmt = $pdo->prepare('DELETE FROM pesanan WHERE id = :id');
-    return $stmt->execute([':id' => $id]);
+    return $stmt->execute([':id' => (int)$id]);
 }
 
-function getAllPesananDecrypted(PDO $pdo, string $key): array
+function getAllPesananDecrypted(PDO $pdo, $key)
 {
     $stmt = $pdo->query('SELECT id, encrypted_data, nonce, auth_tag, created_at, updated_at FROM pesanan ORDER BY id DESC');
     $rows = $stmt->fetchAll();
@@ -428,19 +478,19 @@ function getAllPesananDecrypted(PDO $pdo, string $key): array
     return ['items' => $items, 'failed_count' => $failedCount];
 }
 
-function getPesananByIdDecrypted(PDO $pdo, int $id, string $key): ?array
+function getPesananByIdDecrypted(PDO $pdo, $id, $key)
 {
     $stmt = $pdo->prepare('SELECT id, encrypted_data, nonce, auth_tag, created_at, updated_at FROM pesanan WHERE id = :id LIMIT 1');
-    $stmt->execute([':id' => $id]);
+    $stmt->execute([':id' => (int)$id]);
     $row = $stmt->fetch();
 
     if (!$row) {
         return null;
     }
 
-    $plain  = decryptData($row, $key);
-    $data   = ($plain !== false) ? json_decode($plain, true) : null;
-    $isOk   = is_array($data);
+    $plain = decryptData($row, $key);
+    $data  = ($plain !== false) ? json_decode($plain, true) : null;
+    $isOk  = is_array($data);
 
     return [
         'id'             => (int)$row['id'],
@@ -454,10 +504,10 @@ function getPesananByIdDecrypted(PDO $pdo, int $id, string $key): ?array
     ];
 }
 
-function createLayanan(PDO $pdo, string $nama, int $harga): bool
+function createLayanan(PDO $pdo, $nama, $harga)
 {
     $key  = getServiceEncryptionKey($pdo);
-    $json = json_encode(['nama_layanan' => $nama, 'harga' => $harga], JSON_UNESCAPED_UNICODE);
+    $json = json_encode(['nama_layanan' => $nama, 'harga' => (int)$harga], JSON_UNESCAPED_UNICODE);
     $enc  = encryptData((string)$json, $key);
     if ($enc === false) {
         return false;
@@ -471,10 +521,10 @@ function createLayanan(PDO $pdo, string $nama, int $harga): bool
     ]);
 }
 
-function updateLayanan(PDO $pdo, int $id, string $nama, int $harga): bool
+function updateLayanan(PDO $pdo, $id, $nama, $harga)
 {
     $key  = getServiceEncryptionKey($pdo);
-    $json = json_encode(['nama_layanan' => $nama, 'harga' => $harga], JSON_UNESCAPED_UNICODE);
+    $json = json_encode(['nama_layanan' => $nama, 'harga' => (int)$harga], JSON_UNESCAPED_UNICODE);
     $enc  = encryptData((string)$json, $key);
     if ($enc === false) {
         return false;
@@ -485,17 +535,17 @@ function updateLayanan(PDO $pdo, int $id, string $nama, int $harga): bool
         ':d'  => $enc['encrypted_data'],
         ':n'  => $enc['nonce'],
         ':t'  => $enc['auth_tag'],
-        ':id' => $id
+        ':id' => (int)$id
     ]);
 }
 
-function deleteLayanan(PDO $pdo, int $id): bool
+function deleteLayanan(PDO $pdo, $id)
 {
     $stmt = $pdo->prepare('DELETE FROM layanan WHERE id = :id');
-    return $stmt->execute([':id' => $id]);
+    return $stmt->execute([':id' => (int)$id]);
 }
 
-function getAllLayanan(PDO $pdo): array
+function getAllLayanan(PDO $pdo)
 {
     $key  = getServiceEncryptionKey($pdo);
     $stmt = $pdo->query('SELECT id, encrypted_data, nonce, auth_tag, created_at, updated_at FROM layanan ORDER BY id ASC');
@@ -524,7 +574,7 @@ function getAllLayanan(PDO $pdo): array
     return $list;
 }
 
-function getAllLayananForAdmin(PDO $pdo, bool $keyIsValid): array
+function getAllLayananForAdmin(PDO $pdo, $keyIsValid)
 {
     $serviceKey = $keyIsValid ? getServiceEncryptionKey($pdo) : str_repeat('0', 32);
     $stmt       = $pdo->query('SELECT id, encrypted_data, nonce, auth_tag, created_at, updated_at FROM layanan ORDER BY id ASC');

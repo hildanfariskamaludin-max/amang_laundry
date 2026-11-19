@@ -2,7 +2,7 @@
 /**
  * AMANG LAUNDRY - PORTUGAL FOOTBALL EDITION (CR7 THEME)
  * File 2/3: index.php
- * Landing Page Publik sekaligus Halaman Login Admin
+ * Landing Page Publik sekaligus Halaman Login Admin (Khusus Private Key)
  */
 require_once __DIR__ . '/config.php';
 
@@ -10,32 +10,31 @@ $loginError = '';
 $showLogin  = (isset($_GET['view']) && $_GET['view'] === 'login') || isset($_GET['denied']) || isset($_GET['logged_out']);
 
 if (isset($_GET['denied'])) {
-    $loginError = 'ACCESS DENIED — Silakan login terlebih dahulu.';
+    $loginError = 'ACCESS DENIED — Silakan masukkan Private Key terlebih dahulu.';
 }
 
-// Proses Login ketika tombol Login ditekan pada index.php
+// Proses Login khusus Private Key (tanpa Username)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'admin_login') {
     $showLogin = true;
 
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $loginError = 'ACCESS DENIED — Token keamanan sesi tidak valid.';
     } else {
-        $username = cleanInput($_POST['username'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $privateKey = $_POST['private_key'] ?? '';
 
-        if ($username === '' || $password === '') {
-            $loginError = 'ACCESS DENIED — Username dan Secret Key wajib diisi!';
+        if ($privateKey === '') {
+            $loginError = 'ACCESS DENIED — Private Key wajib diisi!';
         } else {
-            if (authenticateAdmin($pdo, $username, $password)) {
+            if (authenticateAdmin($pdo, $privateKey)) {
                 if (isKeyValid()) {
-                    $_SESSION['flash_success'] = 'Password Benar! Kunci AES-256-GCM cocok. Seluruh data dari database berhasil didekripsi menjadi data asli.';
+                    $_SESSION['flash_success'] = 'Private Key Benar! Kunci AES-256-GCM cocok. Seluruh website dan data berhasil didekripsi menjadi data asli.';
                 } else {
-                    $_SESSION['flash_error'] = 'Password Salah! Kunci AES-256-GCM tidak cocok. Data yang diambil dari database ditampilkan dalam bentuk huruf & angka acak (Ciphertext).';
+                    $_SESSION['flash_error'] = 'Private Key Salah! Kunci AES-256-GCM tidak cocok. Seluruh tampilan website dan data database dienkripsi penuh (Ciphertext).';
                 }
                 header('Location: admin.php');
                 exit;
             } else {
-                $loginError = 'ACCESS DENIED — Username "' . $username . '" tidak terdaftar!';
+                $loginError = 'ACCESS DENIED — Gagal memproses autentikasi.';
             }
         }
     }
@@ -77,6 +76,7 @@ $daftarLayanan = getAllLayanan($pdo);
             background-color: var(--pt-cream);
             color: var(--pt-black);
             line-height: 1.6;
+            overflow-wrap: anywhere;
         }
 
         .portugal-ribbon {
@@ -635,6 +635,7 @@ $daftarLayanan = getAllLayanan($pdo);
                 <li><a href="#tentang">Tentang Kami</a></li>
                 <?php if (isAdminLoggedIn()): ?>
                     <li><a href="admin.php" class="btn-nav-login">Dashboard Admin (#7)</a></li>
+                    <li><a href="admin.php?action=logout" class="btn-nav-login">Logout</a></li>
                 <?php else: ?>
                     <li><a href="#login-admin" class="btn-nav-login">Login Admin</a></li>
                 <?php endif; ?>
@@ -647,7 +648,7 @@ $daftarLayanan = getAllLayanan($pdo);
         <div class="hero-container">
             <div>
                 <div class="edition-pill">&#9917; PORTUGAL FOOTBALL EDITION &bull; CR7 SERIES</div>
-                <h1>Solusi Laundry <span>Juara</span>, Bersih, Wangi & Terpercaya!</h1>
+                <h1>Solusi Laundry <span>Juara</span>, Bersih, Wangi &amp; Terpercaya!</h1>
                 <p>
                     Standar perawatan pakaian kelas juara dengan presisi tinggi. Seluruh data transaksi dan privasi pelanggan dilindungi kriptografi simetris <strong>AES-256-GCM</strong>.
                 </p>
@@ -768,13 +769,13 @@ $daftarLayanan = getAllLayanan($pdo);
         </div>
     </section>
 
-    <!-- BAGIAN LOGIN ADMIN -->
+    <!-- BAGIAN LOGIN ADMIN (KHUSUS PRIVATE KEY) -->
     <section class="login-section" id="login-admin">
         <div class="login-box">
             <div class="login-box-header">
                 <span class="crest">PORTUGAL #7 SECURITY GATE</span>
                 <h2>Administrator Login</h2>
-                <p>Masukkan Username dan Secret Key untuk menurunkan kunci dekripsi AES-256-GCM.</p>
+                <p>Masukkan Private Key untuk menurunkan kunci dekripsi AES-256-GCM.</p>
             </div>
 
             <?php if ($loginError !== ''): ?>
@@ -790,25 +791,20 @@ $daftarLayanan = getAllLayanan($pdo);
                 <input type="hidden" name="action" value="admin_login">
 
                 <div class="form-group">
-                    <label for="username">Username Admin</label>
-                    <input type="text" id="username" name="username" class="form-control" value="Kemal" placeholder="Masukkan username" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password / Secret Key Derivasi AES</label>
+                    <label for="private_key">Private Key</label>
                     <div class="pass-group">
-                        <input type="password" id="password" name="password" class="form-control" placeholder="Masukkan secret key" required>
+                        <input type="password" id="private_key" name="private_key" class="form-control" placeholder="Masukkan Private Key..." required>
                         <button type="button" class="btn-toggle" id="btnToggle" onclick="togglePass()">Lihat</button>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit-login">Buka Dashboard & Jalankan KDF</button>
+                <button type="submit" class="btn-submit-login">Buka Dashboard &amp; Jalankan KDF</button>
             </form>
 
             <div class="demo-hint">
-                <strong>Simulasi Pembuktian Database AES-256-GCM:</strong><br>
-                &bull; Jika Password <strong>Benar</strong>: Data dari database didekripsi & tampil normal.<br>
-                &bull; Jika Password <strong>Salah</strong>: Tetap bisa login, tetapi data yang diambil dari database muncul sebagai <strong>angka & huruf acak (Ciphertext)</strong>.
+                <strong>Simulasi Pembuktian Enkripsi AES-256-GCM:</strong><br>
+                &bull; Jika Private Key <strong>Benar</strong>: Seluruh website &amp; data database didekripsi dan tampil normal.<br>
+                &bull; Jika Private Key <strong>Salah</strong>: Tetap bisa masuk, tetapi <strong>seluruh satu website &amp; data database terenkripsi penuh (Ciphertext)</strong>.
             </div>
         </div>
     </section>
@@ -821,7 +817,7 @@ $daftarLayanan = getAllLayanan($pdo);
 
     <script>
         function togglePass() {
-            var input = document.getElementById('password');
+            var input = document.getElementById('private_key');
             var btn = document.getElementById('btnToggle');
             if (input.type === 'password') {
                 input.type = 'text';

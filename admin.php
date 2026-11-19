@@ -2,8 +2,8 @@
 /**
  * AMANG LAUNDRY - PORTUGAL FOOTBALL EDITION (CR7 THEME)
  * File 3/3: admin.php
- * - Jika Password Benar: Menampilkan data asli hasil dekripsi dari database.
- * - Jika Password Salah: Menampilkan angka & huruf acak (Ciphertext, Nonce, Tag) yang diambil langsung dari database.
+ * - Jika Private Key Benar: Menampilkan seluruh website & data asli hasil dekripsi.
+ * - Jika Private Key Salah: Seluruh tampilan website & data dienkripsi penuh.
  */
 require_once __DIR__ . '/config.php';
 
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_action'])) {
     }
 
     if (!$keyIsValid) {
-        $_SESSION['flash_error'] = 'Operasi ditolak! Anda sedang login dengan Password (Secret Key) yang salah. Silakan Logout dan login dengan password yang benar untuk mengubah data.';
+        $_SESSION['flash_error'] = 'Operasi ditolak! Anda sedang login dengan Private Key yang salah. Silakan Logout dan masukkan Private Key yang benar.';
         header('Location: admin.php?page=' . urlencode($page));
         exit;
     }
@@ -186,7 +186,7 @@ foreach ($daftarPesanan as $item) {
     }
 }
 
-// Sampel potongan hex dari database untuk ditampilkan di kartu statistik saat password salah
+// Sampel potongan hex dari database untuk kartu statistik saat Private Key salah
 $sampleCipherStat1 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['nonce'], 0, 8) : '9F4A2C1E';
 $sampleCipherStat2 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['auth_tag'], 0, 8) : '7B3D8E0A';
 $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypted_data'], 0, 8) : 'X8kP2mQ9';
@@ -224,6 +224,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             color: var(--pt-black);
             display: flex;
             min-height: 100vh;
+            overflow-wrap: anywhere;
         }
 
         /* Sidebar CR7 Portugal */
@@ -243,6 +244,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 0.5rem;
         }
 
         .sidebar-brand {
@@ -280,6 +282,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             border-radius: 7px;
             font-weight: 600;
             font-size: 0.92rem;
+            word-break: break-all;
         }
 
         .sidebar-menu a:hover {
@@ -299,6 +302,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             border-top: 1px solid rgba(212, 175, 55, 0.25);
             font-size: 0.78rem;
             color: var(--pt-cream);
+            word-break: break-all;
         }
 
         /* Main Area */
@@ -375,6 +379,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             margin-bottom: 1.25rem;
             font-weight: 700;
             font-size: 0.9rem;
+            word-break: break-all;
         }
 
         .alert-success { background-color: #e6f4ed; color: var(--pt-green-dark); border-left: 5px solid var(--pt-green); }
@@ -403,6 +408,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             font-size: 0.84rem;
             color: var(--pt-gray);
             font-weight: 700;
+            word-break: break-all;
         }
 
         .stat-card strong {
@@ -432,8 +438,8 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             background: linear-gradient(135deg, #2b0907 0%, var(--pt-red-dark) 100%);
         }
 
-        .security-banner h3 { color: var(--pt-gold); font-size: 1.02rem; }
-        .security-banner p { font-size: 0.85rem; color: var(--pt-cream); }
+        .security-banner h3 { color: var(--pt-gold); font-size: 1.02rem; word-break: break-all; }
+        .security-banner p { font-size: 0.85rem; color: var(--pt-cream); word-break: break-all; }
 
         .sec-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .sec-pill {
@@ -444,6 +450,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             border-radius: 6px;
             font-size: 0.78rem;
             font-weight: 700;
+            word-break: break-all;
         }
 
         /* Panel Card & Tables */
@@ -467,6 +474,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
         .card-header h2 {
             font-size: 1.15rem;
             color: var(--pt-green);
+            word-break: break-all;
         }
 
         .table-wrap { overflow-x: auto; }
@@ -478,15 +486,17 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             padding: 0.8rem 0.9rem;
             font-size: 0.85rem;
             border-bottom: 2px solid var(--pt-gold);
+            word-break: break-all;
         }
         table td {
             padding: 0.8rem 0.9rem;
             border-bottom: 1px solid #eeeeee;
             font-size: 0.88rem;
             vertical-align: middle;
+            word-break: break-all;
         }
 
-        /* Tampilan Angka & Huruf Acak dari Database saat Password Salah */
+        /* Tampilan Angka & Huruf Acak dari Database saat Private Key Salah */
         .db-cipher-text {
             font-family: 'Consolas', 'Courier New', monospace;
             font-weight: 700;
@@ -578,7 +588,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
         <div class="sidebar-footer">
             Portugal Football Edition<br>
             Cipher: <strong>AES-256-GCM</strong><br>
-            Data: <strong><?php echo $keyIsValid ? 'TERDEKRIPSI (BENAR)' : 'ACAK (CIPHERTEXT DB)'; ?></strong>
+            Data: <strong><?php echo $keyIsValid ? 'TERDEKRIPSI (BENAR)' : 'TERENKRIPSI PENUH'; ?></strong>
         </div>
     </aside>
 
@@ -588,17 +598,17 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
             <div class="topbar-title">
                 <h1>CR7 Admin Command Center</h1>
                 <p>
-                    Selamat Datang, <strong><?php echo e($_SESSION['admin_username']); ?></strong> &bull;
+                    Mode Akses: <strong>Private Key</strong> &bull;
                     <?php if ($keyIsValid): ?>
-                        <span style="color:var(--pt-green); font-weight:700;">Password Benar (Menampilkan Data Asli Hasil Dekripsi)</span>
+                        <span style="color:var(--pt-green); font-weight:700;">Private Key Benar (Menampilkan Data Asli Hasil Dekripsi)</span>
                     <?php else: ?>
-                        <span style="color:var(--pt-red); font-weight:700;">Password Salah (Menampilkan Huruf & Angka Acak dari Database)</span>
+                        <span style="color:var(--pt-red); font-weight:700;">Private Key Salah (Seluruh Website &amp; Data Terenkripsi)</span>
                     <?php endif; ?>
                 </p>
             </div>
             <div class="topbar-right">
                 <span class="admin-tag">
-                    <?php echo $keyIsValid ? '&#128275; Data Asli (Plaintext)' : '&#128274; Data Acak (Ciphertext)'; ?>
+                    <?php echo $keyIsValid ? '&#128275; Data Asli (Plaintext)' : '&#128274; Terenkripsi Penuh (Ciphertext)'; ?>
                 </span>
                 <a href="admin.php?action=logout" class="btn btn-red">Logout</a>
             </div>
@@ -640,18 +650,18 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                         <h3>
                             <?php echo $keyIsValid
                                 ? '&#128275; Keamanan Data Aktif — Dekripsi AES-256-GCM Berhasil'
-                                : '&#128274; Password Salah — Data Ditampilkan Sebagai Huruf & Angka Enkripsi Database'; ?>
+                                : '&#128274; Private Key Salah — Seluruh Website &amp; Database Terenkripsi'; ?>
                         </h3>
                         <p>
                             <?php echo $keyIsValid
-                                ? 'Data pelanggan diambil dari database MySQL dan berhasil didekripsi menggunakan kunci AES-256 yang benar.'
-                                : 'Karena password salah, dekripsi ditolak dan tabel menampilkan string encrypted_data, nonce, dan auth_tag langsung dari MySQL.'; ?>
+                                ? 'Data pelanggan diambil dari database MySQL dan berhasil didekripsi menggunakan Private Key yang benar.'
+                                : 'Karena Private Key salah, seluruh isi website dan data database ditampilkan dalam bentuk terenkripsi.'; ?>
                         </p>
                     </div>
                     <div class="sec-pills">
                         <span class="sec-pill">Enkripsi: Aktif</span>
                         <span class="sec-pill">Key Hash: <?php echo strtoupper(substr($_SESSION['aes_key_hex'], 0, 10)); ?>...</span>
-                        <span class="sec-pill">Dekripsi: <?php echo $keyIsValid ? 'Berhasil' : 'Gagal (Tampil Ciphertext)'; ?></span>
+                        <span class="sec-pill">Dekripsi: <?php echo $keyIsValid ? 'Berhasil' : 'Gagal (Terenkripsi)'; ?></span>
                     </div>
                 </div>
 
@@ -690,7 +700,6 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                                     <tr>
                                         <td><?php echo $no++; ?></td>
                                         <?php if ($r['decryption_ok']): ?>
-                                            <!-- JIKA PASSWORD BENAR: TAMPIL DATA ASLI -->
                                             <td><strong><?php echo e($d['nama_pelanggan']); ?></strong></td>
                                             <td><?php echo e($d['jenis_layanan']); ?></td>
                                             <td><?php echo e($d['berat']); ?> kg</td>
@@ -710,7 +719,6 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                                                 </div>
                                             </td>
                                         <?php else: ?>
-                                            <!-- JIKA PASSWORD SALAH: TAMPIL HURUF & ANGKA ACAK DARI DATABASE -->
                                             <td><span class="db-cipher-text"><?php echo e($d['nama_pelanggan']); ?></span></td>
                                             <td><span class="db-cipher-text"><?php echo e($d['jenis_layanan']); ?></span></td>
                                             <td><span class="db-cipher-text"><?php echo e($d['berat']); ?></span></td>
@@ -808,7 +816,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                     </div>
                     <?php if (!$keyIsValid): ?>
                         <div class="alert alert-danger">
-                            Anda sedang login menggunakan Password (Secret Key) yang salah. Silakan Logout dan login dengan password yang benar untuk menambahkan pesanan baru.
+                            Anda sedang login menggunakan Private Key yang salah. Silakan Logout dan masukkan Private Key yang benar untuk menambahkan pesanan baru.
                         </div>
                     <?php else: ?>
                         <form method="POST" action="admin.php?page=tambah">
@@ -873,7 +881,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-green">Enkripsi & Simpan Pesanan</button>
+                            <button type="submit" class="btn btn-green">Enkripsi &amp; Simpan Pesanan</button>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -889,7 +897,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                         <a href="admin.php?page=pesanan" class="btn btn-outline">&larr; Kembali</a>
                     </div>
                     <?php if (!$item || !$item['decryption_ok']): ?>
-                        <div class="alert alert-danger">Data pesanan masih terenkripsi karena Password salah. Silakan login dengan password yang benar untuk mengedit.</div>
+                        <div class="alert alert-danger">Data pesanan masih terenkripsi karena Private Key salah. Silakan login dengan Private Key yang benar untuk mengedit.</div>
                     <?php else: $d = $item['data']; ?>
                         <form method="POST" action="admin.php?page=edit&id=<?php echo $idEdit; ?>">
                             <input type="hidden" name="csrf_token" value="<?php echo e(getCsrfToken()); ?>">
@@ -952,7 +960,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-green">Perbarui & Enkripsi Ulang (Nonce Baru)</button>
+                            <button type="submit" class="btn btn-green">Perbarui &amp; Enkripsi Ulang (Nonce Baru)</button>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -1039,7 +1047,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                             <h2><?php echo $editItem ? 'Edit Layanan #' . $editItem['id'] : 'Tambah Layanan'; ?></h2>
                         </div>
                         <?php if (!$keyIsValid): ?>
-                            <div class="alert alert-danger">Form dikunci karena Anda login dengan Password salah.</div>
+                            <div class="alert alert-danger">Form dikunci karena Anda login dengan Private Key salah.</div>
                         <?php else: ?>
                             <form method="POST" action="admin.php?page=layanan">
                                 <input type="hidden" name="csrf_token" value="<?php echo e(getCsrfToken()); ?>">
@@ -1060,7 +1068,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
                                 </div>
 
                                 <button type="submit" class="btn btn-green">
-                                    <?php echo $editItem ? 'Simpan Perubahan' : 'Enkripsi & Tambah'; ?>
+                                    <?php echo $editItem ? 'Simpan Perubahan' : 'Enkripsi &amp; Tambah'; ?>
                                 </button>
                                 <?php if ($editItem): ?>
                                     <a href="admin.php?page=layanan" class="btn btn-outline">Batal</a>
@@ -1071,7 +1079,7 @@ $sampleCipherStat3 = !empty($daftarPesanan) ? substr($daftarPesanan[0]['encrypte
 
                     <div class="card">
                         <div class="card-header">
-                            <h2>Daftar Layanan & Harga (Dari Database MySQL)</h2>
+                            <h2>Daftar Layanan &amp; Harga (Dari Database MySQL)</h2>
                         </div>
                         <div class="table-wrap">
                             <table>
